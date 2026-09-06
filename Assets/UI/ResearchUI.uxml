@@ -1,0 +1,458 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <ui:Style src="project://database/Assets/UI/ResearchUI.uss" />
+    <ui:VisualElement name="MainContainer" style="background-color: rgb(45,20,20); flex-direction: column; padding: 10px;">
+
+        <!-- ===== SCREEN 1: 论点融合桌 / Todolist / 核心论点选择 ===== -->
+        <ui:VisualElement name="Screen1" class="screen-section">
+            <ui:Label text="1. 论点融合桌 — Todolist &amp; 核心论点选择" class="screen-title"/>
+            
+            <ui:VisualElement class="row-spaced">
+                <!-- Left: Argument Fusion Panel -->
+                <ui:VisualElement class="column" style="flex-grow: 2; margin-right: 12px;">
+                    <ui:Label text="◆ 论点融合桌" class="text-heading"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    
+                    <ui:VisualElement class="row">
+                        <ui:VisualElement class="argument-slot-active">
+                            <ui:Label text="论点 A: 机器学习可解释性对医疗诊断至关重要" class="text-body"/>
+                        </ui:VisualElement>
+                        <ui:Label text="+" style="font-size: 20px; color: rgb(200,160,60); margin: 0 8px;"/>
+                        <ui:VisualElement class="argument-slot">
+                            <ui:Label text="论点 B: 深度学习模型需要大规模标注数据集" class="text-body"/>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="spacer-sm"/>
+                    <ui:VisualElement class="row">
+                        <ui:VisualElement class="argument-slot">
+                            <ui:Label text="论点 C: (空槽位)" class="text-small"/>
+                        </ui:VisualElement>
+                        <ui:Label text="→" style="font-size: 20px; color: rgb(200,160,60); margin: 0 8px;"/>
+                        <ui:VisualElement class="info-card-highlight" style="flex-grow: 1;">
+                            <ui:Label text="融合结果: 探索可解释性在医疗AI中的平衡策略" class="text-highlight"/>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="spacer-md"/>
+                    <ui:VisualElement class="row">
+                        <ui:Button text="添加论点" class="btn-primary"/>
+                        <ui:Button text="融合" class="btn-green"/>
+                        <ui:Button text="清空" class="btn-secondary"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                
+                <!-- Right: Todolist + Core Argument -->
+                <ui:VisualElement class="column" style="flex-grow: 1; max-width: 350px;">
+                    <ui:Label text="◆ 任务清单 (Todolist)" class="text-heading"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    
+                    <ui:VisualElement class="todo-item">
+                        <ui:VisualElement class="todo-check"/>
+                        <ui:Label text="收集3个核心论点" class="text-body"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="todo-item">
+                        <ui:VisualElement class="todo-uncheck"/>
+                        <ui:Label text="完成论点融合实验" class="text-body"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="todo-item">
+                        <ui:VisualElement class="todo-uncheck"/>
+                        <ui:Label text="撰写论文初稿" class="text-body"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="todo-item">
+                        <ui:VisualElement class="todo-uncheck"/>
+                        <ui:Label text="选择目标期刊投稿" class="text-body"/>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="spacer-md"/>
+                    <ui:VisualElement class="divider"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    
+                    <ui:Label text="◆ 核心论点选择" class="text-heading"/>
+                    <ui:VisualElement class="list-item">
+                        <ui:VisualElement class="badge-blue">
+                            <ui:Label text="已选" class="text-small" style="color: white;"/>
+                        </ui:VisualElement>
+                        <ui:Label text="可解释性方法对比研究" class="text-body" style="margin-left: 8px;"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="list-item-alt">
+                        <ui:VisualElement class="badge-green">
+                            <ui:Label text="备选" class="text-small" style="color: white;"/>
+                        </ui:VisualElement>
+                        <ui:Label text="少样本学习在NLP中的应用" class="text-body" style="margin-left: 8px;"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="list-item-alt">
+                        <ui:VisualElement class="badge-green">
+                            <ui:Label text="备选" class="text-small" style="color: white;"/>
+                        </ui:VisualElement>
+                        <ui:Label text="多模态数据融合策略" class="text-body" style="margin-left: 8px;"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ===== SCREEN 2: 电脑与核心论点 ===== -->
+        <ui:VisualElement name="Screen2" class="screen-section">
+            <ui:Label text="2. 电脑与核心论点" class="screen-title"/>
+            
+            <ui:VisualElement class="row">
+                <!-- Monitor Frame -->
+                <ui:VisualElement class="monitor-screen" style="flex-grow: 1; margin-right: 16px;">
+                    <ui:VisualElement class="row-spaced">
+                        <ui:Label text="📊 研究数据面板" class="text-heading"/>
+                        <ui:VisualElement class="row">
+                            <ui:VisualElement class="tab-active">
+                                <ui:Label text="论点" style="color: white; font-size: 12px;"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement class="tab-inactive">
+                                <ui:Label text="数据" style="font-size: 12px;"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement class="tab-inactive">
+                                <ui:Label text="文献" style="font-size: 12px;"/>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="spacer-md"/>
+                    
+                    <!-- Arguments on screen -->
+                    <ui:VisualElement class="info-card-highlight">
+                        <ui:Label text="核心论点 #1" class="text-small"/>
+                        <ui:Label text="深度学习模型的可解释性是医疗AI落地的关键瓶颈" class="text-heading"/>
+                        <ui:VisualElement class="row" style="margin-top: 6px;">
+                            <ui:VisualElement class="badge-blue">
+                                <ui:Label text="置信度 87%" style="color: white; font-size: 10px;"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement class="badge-gold" style="margin-left: 6px;">
+                                <ui:Label text="新颖度 ★★★★" style="color: rgb(40,25,10); font-size: 10px;"/>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="spacer-sm"/>
+                    
+                    <ui:VisualElement class="info-card">
+                        <ui:Label text="核心论点 #2" class="text-small"/>
+                        <ui:Label text="少样本学习能显著降低医疗影像的标注成本" class="text-heading"/>
+                        <ui:VisualElement class="row" style="margin-top: 6px;">
+                            <ui:VisualElement class="badge-blue">
+                                <ui:Label text="置信度 72%" style="color: white; font-size: 10px;"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement class="badge-gold" style="margin-left: 6px;">
+                                <ui:Label text="新颖度 ★★★" style="color: rgb(40,25,10); font-size: 10px;"/>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="spacer-sm"/>
+                    
+                    <ui:VisualElement class="info-card">
+                        <ui:Label text="核心论点 #3" class="text-small"/>
+                        <ui:Label text="多模态融合在疾病预测中优于单模态方法" class="text-heading"/>
+                        <ui:VisualElement class="row" style="margin-top: 6px;">
+                            <ui:VisualElement class="badge-blue">
+                                <ui:Label text="置信度 65%" style="color: white; font-size: 10px;"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement class="badge-gold" style="margin-left: 6px;">
+                                <ui:Label text="新颖度 ★★★" style="color: rgb(40,25,10); font-size: 10px;"/>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                
+                <!-- Right side status panel -->
+                <ui:VisualElement class="column" style="max-width: 280px;">
+                    <ui:Label text="◆ 研究进度" class="text-heading"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    
+                    <ui:VisualElement class="info-card">
+                        <ui:VisualElement class="row-spaced">
+                            <ui:Label text="论点收集" class="text-body"/>
+                            <ui:Label text="3/5" class="text-highlight"/>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="progress-bg" style="margin-top: 4px;">
+                            <ui:VisualElement class="progress-fill" style="width: 60%;"/>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="info-card">
+                        <ui:VisualElement class="row-spaced">
+                            <ui:Label text="实验完成" class="text-body"/>
+                            <ui:Label text="2/8" class="text-highlight"/>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="progress-bg" style="margin-top: 4px;">
+                            <ui:VisualElement class="progress-fill" style="width: 25%;"/>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="info-card">
+                        <ui:VisualElement class="row-spaced">
+                            <ui:Label text="论文撰写" class="text-body"/>
+                            <ui:Label text="1/3" class="text-highlight"/>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="progress-bg" style="margin-top: 4px;">
+                            <ui:VisualElement class="progress-fill" style="width: 33%;"/>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="spacer-md"/>
+                    <ui:Button text="打开文献数据库" class="btn-primary"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ===== SCREEN 3: 实验桌 / 通用实验选项版 ===== -->
+        <ui:VisualElement name="Screen3" class="screen-section">
+            <ui:Label text="3. 实验桌 — 通用实验选项版" class="screen-title"/>
+            
+            <!-- Experiment types row -->
+            <ui:VisualElement class="row-spaced">
+                <ui:VisualElement class="experiment-card">
+                    <ui:Label text="🔬" style="font-size: 28px;"/>
+                    <ui:Label text="对比实验" class="text-heading"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    <ui:Label text="A/B组对照，验证核心假设" class="text-small"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    <ui:Label text="需要: 2组数据" class="text-green"/>
+                    <ui:Button text="开始实验" class="btn-green"/>
+                </ui:VisualElement>
+                
+                <ui:VisualElement class="experiment-card">
+                    <ui:Label text="📈" style="font-size: 28px;"/>
+                    <ui:Label text="消融实验" class="text-heading"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    <ui:Label text="逐步移除组件，分析贡献度" class="text-small"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    <ui:Label text="需要: 基准模型" class="text-green"/>
+                    <ui:Button text="开始实验" class="btn-green"/>
+                </ui:VisualElement>
+                
+                <ui:VisualElement class="experiment-card">
+                    <ui:Label text="📊" style="font-size: 28px;"/>
+                    <ui:Label text="统计检验" class="text-heading"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    <ui:Label text="t检验 / 卡方检验 / 方差分析" class="text-small"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    <ui:Label text="需要: 实验数据" class="text-green"/>
+                    <ui:Button text="开始实验" class="btn-green"/>
+                </ui:VisualElement>
+                
+                <ui:VisualElement class="experiment-card">
+                    <ui:Label text="🤖" style="font-size: 28px;"/>
+                    <ui:Label text="模型训练" class="text-heading"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    <ui:Label text="选择数据集进行模型训练" class="text-small"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    <ui:Label text="需要: 数据集" class="text-green"/>
+                    <ui:Button text="开始实验" class="btn-green"/>
+                </ui:VisualElement>
+                
+                <ui:VisualElement class="experiment-card">
+                    <ui:Label text="🔍" style="font-size: 28px;"/>
+                    <ui:Label text="案例分析" class="text-heading"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    <ui:Label text="深入分析特定样本表现" class="text-small"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    <ui:Label text="需要: 测试样本" class="text-green"/>
+                    <ui:Button text="开始实验" class="btn-green"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+            
+            <ui:VisualElement class="spacer-md"/>
+            <ui:VisualElement class="divider"/>
+            <ui:VisualElement class="spacer-sm"/>
+            
+            <!-- Current experiment info -->
+            <ui:VisualElement class="row-spaced">
+                <ui:Label text="◆ 当前实验队列" class="text-heading"/>
+                <ui:Button text="+ 新建实验" class="btn-primary"/>
+            </ui:VisualElement>
+            
+            <ui:VisualElement class="spacer-sm"/>
+            
+            <ui:VisualElement class="list-item">
+                <ui:VisualElement class="badge-blue">
+                    <ui:Label text="运行中" style="color: white; font-size: 10px;"/>
+                </ui:VisualElement>
+                <ui:Label text="消融实验 - 模型组件分析 (进度 45%)" class="text-body" style="margin-left: 8px;"/>
+                <ui:VisualElement class="progress-bg" style="flex-grow: 1; margin-left: 12px;">
+                    <ui:VisualElement class="progress-fill" style="width: 45%;"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+            
+            <ui:VisualElement class="list-item-alt">
+                <ui:VisualElement class="badge-green">
+                    <ui:Label text="排队中" style="color: white; font-size: 10px;"/>
+                </ui:VisualElement>
+                <ui:Label text="对比实验 - 方法A vs 方法B (等待资源)" class="text-body" style="margin-left: 8px;"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ===== SCREEN 4: 现有论文与等级 ===== -->
+        <ui:VisualElement name="Screen4" class="screen-section">
+            <ui:Label text="4. 现有论文与等级" class="screen-title"/>
+            
+            <ui:VisualElement class="row-spaced">
+                <ui:Label text="◆ 论文列表" class="text-heading"/>
+                <ui:VisualElement class="row">
+                    <ui:Button text="按等级排序" class="btn-secondary"/>
+                    <ui:Button text="按时间排序" class="btn-secondary"/>
+                    <ui:Button text="+ 新建论文" class="btn-primary"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+            
+            <ui:VisualElement class="spacer-sm"/>
+            
+            <!-- Table header -->
+            <ui:VisualElement class="table-header">
+                <ui:Label text="论文标题" class="table-cell"/>
+                <ui:Label text="等级" class="table-cell-small"/>
+                <ui:Label text="状态" class="table-cell-small"/>
+                <ui:Label text="引用" class="table-cell-small"/>
+            </ui:VisualElement>
+            
+            <!-- Paper rows -->
+            <ui:VisualElement class="list-item">
+                <ui:Label text="Interpretable Machine Learning for Healthcare: A Comprehensive Survey" class="text-body" style="flex-grow: 1;"/>
+                <ui:Label text="★★★★★" class="star" style="width: 80px;"/>
+                <ui:VisualElement class="badge-green" style="width: 80px;">
+                    <ui:Label text="已发表" style="color: white; font-size: 10px;"/>
+                </ui:VisualElement>
+                <ui:Label text="127" class="text-highlight" style="width: 80px;"/>
+            </ui:VisualElement>
+            
+            <ui:VisualElement class="list-item-alt">
+                <ui:Label text="Few-Shot Learning Applications in Medical Image Analysis" class="text-body" style="flex-grow: 1;"/>
+                <ui:Label text="★★★★" class="star" style="width: 80px;"/>
+                <ui:VisualElement class="badge-blue" style="width: 80px;">
+                    <ui:Label text="审稿中" style="color: white; font-size: 10px;"/>
+                </ui:VisualElement>
+                <ui:Label text="—" class="text-small" style="width: 80px;"/>
+            </ui:VisualElement>
+            
+            <ui:VisualElement class="list-item">
+                <ui:Label text="Multi-Modal Data Fusion Strategies for Clinical Decision Support" class="text-body" style="flex-grow: 1;"/>
+                <ui:Label text="★★★" class="star" style="width: 80px;"/>
+                <ui:VisualElement class="badge-blue" style="width: 80px;">
+                    <ui:Label text="撰写中" style="color: white; font-size: 10px;"/>
+                </ui:VisualElement>
+                <ui:Label text="—" class="text-small" style="width: 80px;"/>
+            </ui:VisualElement>
+            
+            <ui:VisualElement class="list-item-alt">
+                <ui:Label text="Attention Mechanisms in Transformer-Based Radiology Report Generation" class="text-body" style="flex-grow: 1;"/>
+                <ui:Label text="★★★" class="star" style="width: 80px;"/>
+                <ui:VisualElement class="badge-green" style="width: 80px;">
+                    <ui:Label text="已发表" style="color: white; font-size: 10px;"/>
+                </ui:VisualElement>
+                <ui:Label text="43" class="text-highlight" style="width: 80px;"/>
+            </ui:VisualElement>
+            
+            <ui:VisualElement class="list-item">
+                <ui:Label text="Knowledge Distillation for Lightweight Medical Diagnosis Models" class="text-body" style="flex-grow: 1;"/>
+                <ui:Label text="★★" class="star" style="width: 80px;"/>
+                <ui:VisualElement class="badge-gold" style="width: 80px;">
+                    <ui:Label text="预印本" style="color: rgb(40,25,10); font-size: 10px;"/>
+                </ui:VisualElement>
+                <ui:Label text="12" class="text-highlight" style="width: 80px;"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ===== SCREEN 5: 期刊投递 ===== -->
+        <ui:VisualElement name="Screen5" class="screen-section">
+            <ui:Label text="5. 期刊投递" class="screen-title"/>
+            
+            <ui:VisualElement class="row">
+                <!-- Left: Journal selection -->
+                <ui:VisualElement class="column" style="flex-grow: 2; margin-right: 16px;">
+                    <ui:Label text="◆ 选择目标期刊" class="text-heading"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    
+                    <ui:VisualElement class="journal-card-selected">
+                        <ui:VisualElement class="row-spaced">
+                            <ui:VisualElement class="column">
+                                <ui:Label text="Nature Machine Intelligence" class="text-heading"/>
+                                <ui:Label text="IF: 23.8 | Q1 | 月刊" class="text-small"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement class="badge-blue">
+                                <ui:Label text="推荐 ⭐" style="color: white; font-size: 10px;"/>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="spacer-sm"/>
+                        <ui:Label text="适合高水平机器学习原创研究，审稿周期约3-4个月" class="text-small"/>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="journal-card">
+                        <ui:VisualElement class="row-spaced">
+                            <ui:Label text="IEEE T-PAMI" class="text-heading"/>
+                            <ui:Label text="IF: 20.8 | Q1" class="text-small"/>
+                        </ui:VisualElement>
+                        <ui:Label text="模式分析与机器智能顶级期刊" class="text-small"/>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="journal-card">
+                        <ui:VisualElement class="row-spaced">
+                            <ui:Label text="Medical Image Analysis" class="text-heading"/>
+                            <ui:Label text="IF: 10.9 | Q1" class="text-small"/>
+                        </ui:VisualElement>
+                        <ui:Label text="医学图像分析领域权威期刊" class="text-small"/>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="journal-card">
+                        <ui:VisualElement class="row-spaced">
+                            <ui:Label text="JMLR" class="text-heading"/>
+                            <ui:Label text="IF: 6.0 | Q1" class="text-small"/>
+                        </ui:VisualElement>
+                        <ui:Label text="机器学习研究开放获取期刊" class="text-small"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                
+                <!-- Right: Submission details -->
+                <ui:VisualElement class="column" style="flex-grow: 1; max-width: 350px;">
+                    <ui:Label text="◆ 投递信息" class="text-heading"/>
+                    <ui:VisualElement class="spacer-sm"/>
+                    
+                    <ui:VisualElement class="info-card">
+                        <ui:Label text="选择论文" class="text-small"/>
+                        <ui:Label text="Interpretable ML for Healthcare Survey" class="text-heading"/>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="info-card">
+                        <ui:Label text="目标期刊" class="text-small"/>
+                        <ui:Label text="Nature Machine Intelligence" class="text-highlight"/>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="info-card">
+                        <ui:VisualElement class="row-spaced">
+                            <ui:Label text="匹配度评估" class="text-small"/>
+                            <ui:Label text="82%" class="text-green"/>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="progress-bg" style="margin-top: 4px;">
+                            <ui:VisualElement class="progress-fill" style="width: 82%; background-color: rgb(80,200,120);"/>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="info-card">
+                        <ui:VisualElement class="row-spaced">
+                            <ui:Label text="预计审稿周期" class="text-small"/>
+                            <ui:Label text="3-4个月" class="text-body"/>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="info-card">
+                        <ui:VisualElement class="row-spaced">
+                            <ui:Label text="版面费预估" class="text-small"/>
+                            <ui:Label text="€8,900" class="text-gold"/>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="spacer-md"/>
+                    <ui:VisualElement class="row-spaced">
+                        <ui:Button text="提交投稿" class="btn-gold"/>
+                        <ui:Button text="预检格式" class="btn-secondary"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>
