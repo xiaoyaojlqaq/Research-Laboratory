@@ -1,88 +1,48 @@
-using System.Collections;
-using System.Collections.Generic;
+using System;
 using UnityEngine;
 
+[Serializable]
 public class MainState
 {
-    int currRound;
-    int strength;
-    int inspiration;
-    int manuscriptStatusSummary;
+    [Min(1)]
+    public int currentRound = 1;
+
+    [Min(0f)]
+    public float remainingTimeSeconds;
+
+    [Min(0)]
+    public int stamina = 100;
+
+    [Min(0)]
+    public float inspiration;
 
     public int CurrRound
     {
-        get
-        {
-            return currRound;
-        }
-        set
-        {
-            if (value >= 0)
-            {
-                currRound = value;
-            }
-            else
-            {
-                currRound = 0;
-            }
-        }
+        get { return currentRound; }
+        set { currentRound = Mathf.Max(1, value); }
+    }
+
+    public float RemainingTimeSeconds
+    {
+        get { return remainingTimeSeconds; }
+        set { remainingTimeSeconds = Mathf.Max(0f, value); }
+    }
+
+    public float Time
+    {
+        get { return RemainingTimeSeconds; }
+        set { RemainingTimeSeconds = value; }
     }
 
     public int Strength
     {
-        get
-        {
-            return strength;
-        }
-        set
-        {
-            if (value >= 0)
-            {
-                strength = value;
-            }
-            else
-            {
-                strength = 0;
-            }
-        }
+        get { return stamina; }
+        set { stamina = Mathf.Max(0, value); }
     }
 
-    public int Inspiration
+    public float Inspiration
     {
-        get
-        {
-            return inspiration;
-        }
-        set
-        {
-            if (value >= 0)
-            {
-                inspiration = value;
-            }
-            else
-            {
-                inspiration = 0;
-            }
-        }
+        get { return inspiration; }
+        set { inspiration = Mathf.Max(0f, value); }
     }
-
-    public int ManuscriptStatusSummary
-    {
-        get
-        {
-            return manuscriptStatusSummary;
-        }
-        set
-        {
-            if (value >= 0)
-            {
-                manuscriptStatusSummary = value;
-            }
-            else
-            {
-                manuscriptStatusSummary = 0;
-            }
-        }
-    }
-
 }
