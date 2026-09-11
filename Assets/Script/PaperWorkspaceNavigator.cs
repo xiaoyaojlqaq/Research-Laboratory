@@ -13,6 +13,9 @@ public class PaperWorkspaceNavigator : MonoBehaviour
     private GameObject submitApplication;
     private GameObject continueArgument;
     private GameObject argumentState;
+    private GameObject peerReview;
+    private Transform peerReviewContent;
+    private GameObject reviewArgumentPrefab;
     private RoundTimer roundTimer;
     private Button incorporateViewpointButton;
     private Button literatureSearchButton;
@@ -38,6 +41,10 @@ public class PaperWorkspaceNavigator : MonoBehaviour
         submitApplication = FindPanel(canvas, "SubmitApplication");
         continueArgument = FindPanel(canvas, "ContinueArgument");
         argumentState = FindPanel(canvas, "ArgumentState");
+        peerReview = FindPanel(canvas, "peerReview");
+        Transform peerReviewViewport = FindChild(peerReview == null ? null : peerReview.transform, "Viewport");
+        peerReviewContent = FindChild(peerReviewViewport, "Content");
+        reviewArgumentPrefab = LoadReviewArgumentPrefab();
         roundTimer = FindObjectOfType<RoundTimer>();
         Transform incorporateButton = FindChild(writeThesisMain == null ? null : writeThesisMain.transform, "IncorporateTheViewpoint");
         incorporateViewpointButton = incorporateButton == null ? null : incorporateButton.GetComponent<Button>();
@@ -77,6 +84,7 @@ public class PaperWorkspaceNavigator : MonoBehaviour
             submitButton.onClick.AddListener(SubmitCurrentPaper);
         }
         AddListener("SubmitApplication", ShowSubmitApplication);
+        AddListener("PeerReview", ShowPeerReview);
     }
 
     private void Start()
@@ -86,6 +94,7 @@ public class PaperWorkspaceNavigator : MonoBehaviour
         SetActive(writeThesisMain, false);
         SetActive(submitApplication, false);
         SetActive(continueArgument, false);
+        SetActive(peerReview, false);
         RefreshCoreArgumentOptions();
         RefreshIncorporateViewpointButton();
         RefreshLiteratureSearchButton();
@@ -111,13 +120,17 @@ public class PaperWorkspaceNavigator : MonoBehaviour
         }
     }
 
-    private void AdvancePaperFusionCooldowns()
+private void AdvancePaperFusionCooldowns()
     {
         foreach (PaperInfoScriptableObject paper in createdPapers)
         {
-            if (paper != null && paper.paperInfo != null)
+            if (paper == null || paper.paperInfo == null) continue;
+
+            paper.paperInfo.fusionCooldownRounds = Mathf.Max(0, paper.paperInfo.fusionCooldownRounds - 1);
+
+            if (paper.paperInfo.submissionStatus == SubmissionStatus.Submitted)
             {
-                paper.paperInfo.fusionCooldownRounds = Mathf.Max(0, paper.paperInfo.fusionCooldownRounds - 1);
+                paper.paperInfo.remainingRounds = Mathf.Max(0, paper.paperInfo.remainingRounds - 1);
             }
         }
 
@@ -126,6 +139,10 @@ public class PaperWorkspaceNavigator : MonoBehaviour
         RefreshLiteratureSearchButton();
         RefreshFinalizeFrameworkButton();
         RefreshSubmissionControls();
+        if (peerReview != null && peerReview.activeSelf)
+        {
+            RefreshPeerReviewList();
+        }
     }
 
     private void ShowChooseArgument()
@@ -495,7 +512,7 @@ public class PaperWorkspaceNavigator : MonoBehaviour
         }
     }
 
-    private void BindArgumentSelection(GameObject argument, PaperInfoScriptableObject paper, bool openWriteThesis)
+private void BindArgumentSelection(GameObject argument, PaperInfoScriptableObject paper, bool openWriteThesis)
     {
         Button button = argument.GetComponent<Button>();
         if (button == null)
@@ -504,7 +521,11 @@ public class PaperWorkspaceNavigator : MonoBehaviour
             return;
         }
 
-        button.interactable = paper.paperInfo.submissionStatus != SubmissionStatus.Submitted;
+        SubmissionStatus status = paper.paperInfo.submissionStatus;
+        button.interactable = status != SubmissionStatus.Submitted && status != SubmissionStatus.Accepted;
+        ColorBlock colors = button.colors;
+        colors.disabledColor = Color.gray;
+        button.colors = colors;
         button.onClick.AddListener(() => SelectResearchPaper(paper, openWriteThesis));
     }
 
@@ -543,9 +564,10 @@ public class PaperWorkspaceNavigator : MonoBehaviour
         SetEntryMetric(entry, "AcceptanceRate", info.submissionSuccessRate);
     }
 
-    private void UpdateSubmissionSuccessRate(PaperInfo info)
+private void UpdateSubmissionSuccessRate(PaperInfo info)
     {
-        info.submissionSuccessRate = Mathf.Floor((info.logicDegree + info.dataRigor + info.viewpointInnovation) / 3f);
+        float average = Mathf.Floor((info.logicDegree + info.dataRigor + info.viewpointInnovation) / 3f);
+        info.submissionSuccessRate = Mathf.Clamp(average - info.complexity, 0f, 100f);
     }
 
     private string GetSubmissionStatusText(SubmissionStatus status)
@@ -739,15 +761,117 @@ public class PaperWorkspaceNavigator : MonoBehaviour
         return false;
     }
 
-    private void ShowOnly(GameObject target, bool showArgumentState)
+private void ShowOnly(GameObject target, bool showArgumentState)
     {
         SetActive(chooseArgument, target == chooseArgument);
         SetActive(chooseCoreArgument, target == chooseCoreArgument);
         SetActive(writeThesisMain, target == writeThesisMain);
         SetActive(submitApplication, target == submitApplication);
         SetActive(continueArgument, target == continueArgument);
+        SetActive(peerReview, target == peerReview);
         SetActive(argumentState, showArgumentState);
     }
+
+private void ShowPeerReview()
+    {
+        ShowOnly(peerReview, false);
+        RefreshPeerReviewList();
+    }
+
+
+
+
+private void RefreshPeerReviewList()
+    {
+        if (peerReviewContent == null || reviewArgumentPrefab == null) return;
+
+        for (int i = peerReviewContent.childCount - 1; i >= 0; i--)
+            Destroy(peerReviewContent.GetChild(i).gameObject);
+
+        foreach (PaperInfoScriptableObject paper in createdPapers)
+        {
+            if (paper == null || paper.paperInfo == null) continue;
+
+            SubmissionStatus status = paper.paperInfo.submissionStatus;
+
+            // 未投稿、仅构筑完成、已拒稿 均不显示
+            if (status == SubmissionStatus.NotSubmitted ||
+                status == SubmissionStatus.ConstructionCompleted ||
+                status == SubmissionStatus.Rejected)
+                continue;
+
+            GameObject entry = Instantiate(reviewArgumentPrefab, peerReviewContent);
+            UpdateReviewArgumentEntry(entry.transform, paper.paperInfo);
+
+            Button btn = entry.GetComponent<Button>();
+            if (btn == null) continue;
+
+            ColorBlock colors = btn.colors;
+            colors.disabledColor = Color.gray;
+            btn.colors = colors;
+
+            if (status == SubmissionStatus.Accepted)
+            {
+                // 已接受：永久禁用
+                btn.interactable = false;
+            }
+            else if (status == SubmissionStatus.Submitted && paper.paperInfo.remainingRounds <= 0)
+            {
+                // 审稿期结束：可点击，点击触发审稿判定
+                btn.interactable = true;
+                PaperInfoScriptableObject captured = paper;
+                btn.onClick.AddListener(() => ResolveReview(captured));
+            }
+            else
+            {
+                // 审稿中：禁用
+                btn.interactable = false;
+            }
+        }
+    }
+
+private void ResolveReview(PaperInfoScriptableObject paper)
+    {
+        if (paper == null || paper.paperInfo == null) return;
+        if (paper.paperInfo.submissionStatus != SubmissionStatus.Submitted) return;
+
+        UpdateSubmissionSuccessRate(paper.paperInfo);
+        float roll = Random.Range(0f, 100f);
+        paper.paperInfo.submissionStatus = roll < paper.paperInfo.submissionSuccessRate
+            ? SubmissionStatus.Accepted
+            : SubmissionStatus.Rejected;
+
+        RefreshArgumentLists();
+        RefreshPeerReviewList();
+        UpdateArgumentState();
+    }
+
+
+private void UpdateReviewArgumentEntry(Transform entry, PaperInfo info)
+    {
+        SetText(entry, "NameText", info.paperName);
+        SetText(entry, "stateText", GetSubmissionStatusText(info.submissionStatus));
+        SetText(entry, "TargetJournal", "投稿期刊 " + info.submissionLevel);
+        SetText(entry, "ReviewRound", "投稿回合 " + info.submissionRound);
+        SetText(entry, "ExpectedNumberofRounds", "预计审回回合 " + info.expectedReviewRound);
+        SetText(entry, "RemainingRounds", "剩余回合 " + info.remainingRounds);
+    }
+
+    private GameObject LoadReviewArgumentPrefab()
+    {
+        GameObject loaded = Resources.Load<GameObject>("Prefab/ReviewArgument");
+        if (loaded != null)
+        {
+            return loaded;
+        }
+#if UNITY_EDITOR
+        return AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefab/ReviewArgument.prefab");
+#else
+        return null;
+#endif
+    }
+
+
 
     private void AddListener(string buttonName, UnityEngine.Events.UnityAction action)
     {
