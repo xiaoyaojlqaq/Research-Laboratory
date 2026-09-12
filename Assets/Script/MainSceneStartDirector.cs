@@ -4,49 +4,26 @@ using UnityEngine.Playables;
 
 /// <summary>
 /// 挂载在 MainSceneStartDirector 对象上。
-/// 等 TimeLine 播放完毕后，才启用 MainCanvas/PaperWorkspace 和 MainCanvas/LabBench 按钮。
+/// 负责在主场景开场动画播放后，提供 PaperWorkspace 按钮点击时播放入场 TimeLine 的逻辑。
+/// 按钮本身始终可以点击，不受 TimeLine 播放状态限制。
 /// </summary>
 [RequireComponent(typeof(PlayableDirector))]
 public class MainSceneStartDirector : MonoBehaviour
 {
     private PlayableDirector director;
     private Button paperWorkspaceButton;
-    private Button labBenchButton;
-    private bool buttonsEnabled = false;
 
     private void Awake()
     {
         director = GetComponent<PlayableDirector>();
-
         paperWorkspaceButton = FindButtonInMainCanvas("PaperWorkspace");
-        labBenchButton = FindButtonInMainCanvas("LabBench");
-
-        SetButtonsInteractable(false);
 
         // 绑定 PaperWorkspace 按钮：点击时播放对应 TimeLine
         if (paperWorkspaceButton != null)
             paperWorkspaceButton.onClick.AddListener(OnPaperWorkspaceClicked);
     }
 
-    private void OnDestroy() { }
-
-    private void Update()
-    {
-        if (buttonsEnabled) return;
-
-        // 在 TimeLine 结束前 0.5 秒启用按钮
-        if (director.state == UnityEngine.Playables.PlayState.Playing &&
-            director.time >= director.duration - 0.5)
-        {
-            SetButtonsInteractable(true);
-            buttonsEnabled = true;
-        }
-    }
-
-
-
-
-private void OnPaperWorkspaceClicked()
+    private void OnPaperWorkspaceClicked()
     {
         GameObject dirObj = GameObject.Find("PaperWorkspaceStartDirector");
         if (dirObj == null)
@@ -74,14 +51,6 @@ private void OnPaperWorkspaceClicked()
 
         pd.time = 0;
         pd.Play();
-    }
-
-    private void SetButtonsInteractable(bool interactable)
-    {
-        if (paperWorkspaceButton != null)
-            paperWorkspaceButton.interactable = interactable;
-        if (labBenchButton != null)
-            labBenchButton.interactable = interactable;
     }
 
     /// <summary>

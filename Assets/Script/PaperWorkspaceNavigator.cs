@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -32,9 +33,13 @@ public class PaperWorkspaceNavigator : MonoBehaviour
     public readonly List<PaperInfoScriptableObject> createdPapers = new List<PaperInfoScriptableObject>();
     public PaperInfoScriptableObject currentResearchPaper;
 
+    public AllLefButton allLefButton;
+
     private void Awake()
     {
-        Transform canvas = GetComponentInParent<Canvas>().transform;
+        // 直接用 transform.parent 获取 Canvas（PaperWorkspaceCanvas 默认 active=false，
+        // GetComponentInParent<Canvas>() 在旧版 Unity 不搜索非激活父对象，导致返回 null）
+        Transform canvas = transform.parent;
         chooseCoreArgument = FindPanel(canvas, "ChooseCoreArgument");
         chooseArgument = FindPanel(canvas, "chooseArgument");
         writeThesisMain = FindPanel(canvas, "WriteThesisMain");
@@ -147,12 +152,12 @@ private void AdvancePaperFusionCooldowns()
 
     private void ShowChooseArgument()
     {
-        ShowOnly(chooseArgument, false);
+        ShowOnly(chooseArgument, false,0);
     }
 
     private void ShowChooseCoreArgument()
     {
-        ShowOnly(chooseCoreArgument, true);
+        ShowOnly(chooseCoreArgument, true,0);
     }
 
     private void RefreshCoreArgumentOptions()
@@ -184,7 +189,7 @@ private void AdvancePaperFusionCooldowns()
 
     private void ShowWriteThesis()
     {
-        ShowOnly(writeThesisMain, true);
+        ShowOnly(writeThesisMain, true, 1);
         RefreshIncorporateViewpointButton();
         RefreshLiteratureSearchButton();
         RefreshFinalizeFrameworkButton();
@@ -290,9 +295,9 @@ private void AdvancePaperFusionCooldowns()
         }
 
         PaperInfo info = currentResearchPaper.paperInfo;
-        info.logicDegree += 2f;
-        info.dataRigor += 2f;
-        info.viewpointInnovation += 1f;
+        info.logicDegree = Mathf.Min(100f, info.logicDegree + 2f);
+        info.dataRigor = Mathf.Min(100f, info.dataRigor + 2f);
+        info.viewpointInnovation = Mathf.Min(100f, info.viewpointInnovation + 1f);
         roundTimer.State.Inspiration += 0.4f;
         UpdateArgumentState();
         RefreshArgumentLists();
@@ -313,10 +318,11 @@ private void AdvancePaperFusionCooldowns()
         literatureSearchButton.colors = colors;
     }
 
-    private void ShowSubmitApplication()
+private void ShowSubmitApplication()
     {
         RefreshArgumentLists();
-        ShowOnly(submitApplication, false);
+        ShowOnly(submitApplication, false, 2);
+        RefreshSubmissionControls();
     }
 
     private void BindSubmissionOptions()
@@ -372,7 +378,7 @@ private void AdvancePaperFusionCooldowns()
         RefreshSubmissionControls();
     }
 
-    private bool IsSubmissionOptionAvailable(SubmissionOptionScriptableObject option)
+private bool IsSubmissionOptionAvailable(SubmissionOptionScriptableObject option)
     {
         if (option == null || currentResearchPaper == null || currentResearchPaper.paperInfo == null || roundTimer == null || roundTimer.State == null)
         {
@@ -381,24 +387,35 @@ private void AdvancePaperFusionCooldowns()
 
         PaperInfo info = currentResearchPaper.paperInfo;
         int round = roundTimer.State.CurrRound;
-        return info.submissionStatus == SubmissionStatus.ConstructionCompleted &&
-               round >= option.openRound && round <= option.deadlineRound &&
+        bool canSubmit = info.submissionStatus == SubmissionStatus.ConstructionCompleted ||
+                         info.submissionStatus == SubmissionStatus.Rejected;
+        return canSubmit &&
+               round >= option.openRound && round < option.deadlineRound &&
                info.logicDegree >= option.minimumLogic &&
                info.dataRigor >= option.minimumRigor &&
                info.viewpointInnovation >= option.minimumInnovation;
     }
 
-    private void RefreshSubmissionControls()
+private void RefreshSubmissionControls()
     {
+        // 若 submissionChooseRoot 为空，尝试重新获取
+        if (submissionChooseRoot == null && submitApplication != null)
+            submissionChooseRoot = FindChild(submitApplication.transform, "choose");
+
         if (submissionChooseRoot != null)
         {
             for (int i = 0; i < submissionChooseRoot.childCount; i++)
             {
-                Button button = submissionChooseRoot.GetChild(i).GetComponent<Button>();
-                if (button == null) continue;
+                Transform btnTransform = submissionChooseRoot.GetChild(i);
+                Button button = btnTransform.GetComponent<Button>();
+                if (button == null)
+                    continue;
+
                 SubmissionOptionScriptableObject option = i < submissionOptions.Count ? submissionOptions[i] : null;
                 bool available = IsSubmissionOptionAvailable(option);
                 button.interactable = available;
+
+
                 ColorBlock colors = button.colors;
                 Color baseColor = submissionNormalColors.TryGetValue(button, out Color originalColor)
                     ? originalColor
@@ -438,7 +455,7 @@ private void AdvancePaperFusionCooldowns()
     private void ShowContinueArgument()
     {
         RefreshArgumentLists();
-        ShowOnly(continueArgument, false);
+        ShowOnly(continueArgument, false, 0);
     }
 
     private void AddPaperCreationListener(string buttonName)
@@ -529,7 +546,7 @@ private void BindArgumentSelection(GameObject argument, PaperInfoScriptableObjec
         button.onClick.AddListener(() => SelectResearchPaper(paper, openWriteThesis));
     }
 
-    private void SelectResearchPaper(PaperInfoScriptableObject paper, bool openWriteThesis = false)
+private void SelectResearchPaper(PaperInfoScriptableObject paper, bool openWriteThesis = false)
     {
         if (paper == null || paper.paperInfo == null)
         {
@@ -540,6 +557,7 @@ private void BindArgumentSelection(GameObject argument, PaperInfoScriptableObjec
         selectedSubmissionOption = null;
         UpdateArgumentState();
         RefreshArgumentLists();
+        RefreshSubmissionControls();
         if (openWriteThesis)
         {
             ShowWriteThesis();
@@ -566,6 +584,11 @@ private void BindArgumentSelection(GameObject argument, PaperInfoScriptableObjec
 
 private void UpdateSubmissionSuccessRate(PaperInfo info)
     {
+        // 强制五个属性上限为100
+        info.logicDegree = Mathf.Clamp(info.logicDegree, 0f, 100f);
+        info.dataRigor = Mathf.Clamp(info.dataRigor, 0f, 100f);
+        info.viewpointInnovation = Mathf.Clamp(info.viewpointInnovation, 0f, 100f);
+        info.complexity = Mathf.Clamp(info.complexity, 0f, 100f);
         float average = Mathf.Floor((info.logicDegree + info.dataRigor + info.viewpointInnovation) / 3f);
         info.submissionSuccessRate = Mathf.Clamp(average - info.complexity, 0f, 100f);
     }
@@ -761,7 +784,7 @@ private void UpdateSubmissionSuccessRate(PaperInfo info)
         return false;
     }
 
-private void ShowOnly(GameObject target, bool showArgumentState)
+private void ShowOnly(GameObject target, bool showArgumentState,int index)
     {
         SetActive(chooseArgument, target == chooseArgument);
         SetActive(chooseCoreArgument, target == chooseCoreArgument);
@@ -770,11 +793,14 @@ private void ShowOnly(GameObject target, bool showArgumentState)
         SetActive(continueArgument, target == continueArgument);
         SetActive(peerReview, target == peerReview);
         SetActive(argumentState, showArgumentState);
+
+        if (index == -1) return;
+        allLefButton.LefButtonChoose(index);
     }
 
-private void ShowPeerReview()
+    private void ShowPeerReview()
     {
-        ShowOnly(peerReview, false);
+        ShowOnly(peerReview, false, 3);
         RefreshPeerReviewList();
     }
 
