@@ -9,18 +9,9 @@ public class RoundTimer : MonoBehaviour
     [SerializeField] private int roundDurationSeconds = 8 * 60;
     [SerializeField] private MainState state = new MainState();
 
-    /// <summary>
-    /// 挂载了 ChangeTurnAnim.playable 的 PlayableDirector。
-    /// 若未在 Inspector 赋值，Awake 时自动查找名为 "ChangeTurnDirector" 的 GameObject。
-    /// </summary>
     [SerializeField] private PlayableDirector changeTurnDirector;
 
-    /// <summary>
-    /// Timeline 播放期间是否禁用所有按钮交互。
-    /// false（默认）= 播放时按钮仍然可以点击；
-    /// true          = 播放时所有 Button.interactable = false，结束后恢复。
-    /// </summary>
-    [SerializeField] private bool blockInputDuringTimeline = false;
+    [SerializeField] private bool blockInputDuringTimeline = true;
 
     private Text roundText;
     private Text timeText;
@@ -41,11 +32,26 @@ public class RoundTimer : MonoBehaviour
 
         if (state == null) state = new MainState();
 
-        state.CurrRound = Mathf.Max(1, state.CurrRound);
-        state.RemainingTimeSeconds = roundDurationSeconds;
-        state.Strength = MaximumStamina;
+        // ── 读取存档（SaveManager 已在 BeforeSceneLoad 阶段自动初始化并加载存档）──
+        SaveData save = SaveManager.Instance != null ? SaveManager.Instance.Data : null;
 
-        // 自动查找
+        if (save != null)
+        {
+            state.CurrRound            = save.currentRound;
+            state.RemainingTimeSeconds = save.remainingTimeSeconds > 0f
+                                         ? save.remainingTimeSeconds
+                                         : roundDurationSeconds;
+            state.Strength             = save.stamina > 0 ? save.stamina : MaximumStamina;
+            state.Inspiration          = save.inspiration;
+        }
+        else
+        {
+            state.CurrRound            = 1;
+            state.RemainingTimeSeconds = roundDurationSeconds;
+            state.Strength             = MaximumStamina;
+        }
+
+        // 自动查找 ChangeTurnDirector
         if (changeTurnDirector == null)
         {
             GameObject dirObj = GameObject.Find("ChangeTurnDirector");
@@ -56,7 +62,6 @@ public class RoundTimer : MonoBehaviour
                 Debug.LogWarning("RoundTimer：未找到 ChangeTurnDirector，回合切换动画将不会播放。", this);
         }
 
-        // 订阅 Timeline 播放完成事件
         if (changeTurnDirector != null)
             changeTurnDirector.stopped += OnTimelineStopped;
 
@@ -72,7 +77,6 @@ public class RoundTimer : MonoBehaviour
     // ──────────────────────────────────────────────
     private void Update()
     {
-        // Timeline 播放中跳过时间/体力检测，避免动画结束前再次触发 AdvanceRound
         if (IsTimelinePlaying()) return;
 
         state.RemainingTimeSeconds -= Time.deltaTime;
@@ -90,10 +94,21 @@ public class RoundTimer : MonoBehaviour
         state.RemainingTimeSeconds = roundDurationSeconds;
         state.Strength = MaximumStamina;
 
-        PlayChangeTurnTimeline();   // 播放动画（内部按需禁用按钮）
+        PlayChangeTurnTimeline();
 
         RoundAdvanced?.Invoke();
         UpdateDisplay();
+
+        // 每次回合推进时保存主状态
+        SaveState();
+    }
+
+    // ──────────────────────────────────────────────
+    /// <summary>将当前 state 写入存档（论文由 PaperWorkspaceNavigator 负责写）。</summary>
+    public void SaveState()
+    {
+        if (SaveManager.Instance != null)
+            SaveManager.Instance.SaveState(state);
     }
 
     // ──────────────────────────────────────────────
@@ -108,25 +123,18 @@ public class RoundTimer : MonoBehaviour
         changeTurnDirector.Play();
     }
 
-    /// <summary>
-    /// PlayableDirector.stopped 回调：Timeline 结束或被 Stop() 时触发。
-    /// </summary>
     private void OnTimelineStopped(PlayableDirector pd)
     {
         if (blockInputDuringTimeline)
             SetAllButtonsInteractable(true);
     }
 
-    // ──────────────────────────────────────────────
     private bool IsTimelinePlaying()
         => changeTurnDirector != null && changeTurnDirector.state == PlayState.Playing;
 
-    /// <summary>
-    /// 启用或禁用场景中所有激活的 Button。
-    /// </summary>
     private void SetAllButtonsInteractable(bool interactable)
     {
-        Button[] allButtons = FindObjectsOfType<Button>(false); // false = 只找激活的
+        Button[] allButtons = FindObjectsOfType<Button>(false);
         foreach (Button btn in allButtons)
             btn.interactable = interactable;
     }
@@ -146,6 +154,9 @@ public class RoundTimer : MonoBehaviour
         state.Strength -= staminaCost;
         state.RemainingTimeSeconds -= timeCostSeconds;
         UpdateDisplay();
+
+        // 消耗体力/时间后也保存
+        SaveState();
         return true;
     }
 

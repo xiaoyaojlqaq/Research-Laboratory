@@ -37,8 +37,6 @@ public class PaperWorkspaceNavigator : MonoBehaviour
 
     private void Awake()
     {
-        // 直接用 transform.parent 获取 Canvas（PaperWorkspaceCanvas 默认 active=false，
-        // GetComponentInParent<Canvas>() 在旧版 Unity 不搜索非激活父对象，导致返回 null）
         Transform canvas = transform.parent;
         chooseCoreArgument = FindPanel(canvas, "ChooseCoreArgument");
         chooseArgument = FindPanel(canvas, "chooseArgument");
@@ -67,6 +65,7 @@ public class PaperWorkspaceNavigator : MonoBehaviour
             roundTimer.RoundAdvanced += RefreshCoreArgumentOptions;
             roundTimer.RoundAdvanced += AdvancePaperFusionCooldowns;
             roundTimer.RoundAdvanced += RefreshSubmissionControls;
+            roundTimer.RoundAdvanced += OnRoundAdvancedSavePapers;
         }
         argumentList = ResolveArgumentList(submitApplication == null ? null : submitApplication.transform);
         continueArgumentList = ResolveArgumentList(continueArgument == null ? null : continueArgument.transform);
@@ -100,6 +99,15 @@ public class PaperWorkspaceNavigator : MonoBehaviour
         SetActive(submitApplication, false);
         SetActive(continueArgument, false);
         SetActive(peerReview, false);
+
+        // ── 从存档恢复论文列表 ──────────────────────────────────────
+        if (SaveManager.Instance != null && SaveManager.Instance.Data != null
+            && SaveManager.Instance.Data.papers != null
+            && SaveManager.Instance.Data.papers.Count > 0)
+        {
+            RestorePapersFromSave(SaveManager.Instance.Data.papers);
+        }
+
         RefreshCoreArgumentOptions();
         RefreshIncorporateViewpointButton();
         RefreshLiteratureSearchButton();
@@ -122,68 +130,89 @@ public class PaperWorkspaceNavigator : MonoBehaviour
             roundTimer.RoundAdvanced -= RefreshCoreArgumentOptions;
             roundTimer.RoundAdvanced -= AdvancePaperFusionCooldowns;
             roundTimer.RoundAdvanced -= RefreshSubmissionControls;
+            roundTimer.RoundAdvanced -= OnRoundAdvancedSavePapers;
         }
     }
 
-private void AdvancePaperFusionCooldowns()
+    // ── 存档：每次回合推进时保存论文 ──────────────────────────────
+    private void OnRoundAdvancedSavePapers()
+    {
+        SavePapers();
+    }
+
+    private void SavePapers()
+    {
+        if (SaveManager.Instance != null)
+            SaveManager.Instance.SavePapers(createdPapers);
+    }
+
+    // ── 存档：从 SaveData.papers 恢复论文 ────────────────────────
+    private void RestorePapersFromSave(List<PaperSaveData> savedPapers)
+    {
+        createdPapers.Clear();
+        currentResearchPaper = null;
+
+        foreach (PaperSaveData sd in savedPapers)
+        {
+            if (sd == null) continue;
+            PaperInfoScriptableObject paper = ScriptableObject.CreateInstance<PaperInfoScriptableObject>();
+            paper.paperInfo = sd.ToPaperInfo();
+            createdPapers.Add(paper);
+        }
+
+        foreach (PaperInfoScriptableObject p in createdPapers)
+        {
+            if (p.paperInfo.submissionStatus != SubmissionStatus.Accepted
+                && p.paperInfo.submissionStatus != SubmissionStatus.Submitted)
+            {
+                currentResearchPaper = p;
+                break;
+            }
+        }
+
+        if (currentResearchPaper == null && createdPapers.Count > 0)
+            currentResearchPaper = createdPapers[createdPapers.Count - 1];
+
+        RefreshArgumentLists();
+        UpdateArgumentState();
+        Debug.Log("[PaperWorkspaceNavigator] Restored " + createdPapers.Count + " papers from save.");
+    }
+
+    private void AdvancePaperFusionCooldowns()
     {
         foreach (PaperInfoScriptableObject paper in createdPapers)
         {
             if (paper == null || paper.paperInfo == null) continue;
-
             paper.paperInfo.fusionCooldownRounds = Mathf.Max(0, paper.paperInfo.fusionCooldownRounds - 1);
-
             if (paper.paperInfo.submissionStatus == SubmissionStatus.Submitted)
-            {
                 paper.paperInfo.remainingRounds = Mathf.Max(0, paper.paperInfo.remainingRounds - 1);
-            }
         }
-
         RefreshArgumentLists();
         RefreshIncorporateViewpointButton();
         RefreshLiteratureSearchButton();
         RefreshFinalizeFrameworkButton();
         RefreshSubmissionControls();
         if (peerReview != null && peerReview.activeSelf)
-        {
             RefreshPeerReviewList();
-        }
     }
 
-    private void ShowChooseArgument()
-    {
-        ShowOnly(chooseArgument, false,0);
-    }
-
-    private void ShowChooseCoreArgument()
-    {
-        ShowOnly(chooseCoreArgument, true,0);
-    }
+    private void ShowChooseArgument()    { ShowOnly(chooseArgument, false, 0); }
+    private void ShowChooseCoreArgument(){ ShowOnly(chooseCoreArgument, true, 0); }
 
     private void RefreshCoreArgumentOptions()
     {
         List<int> viewpoints = new List<int>();
-        for (int i = 1; i <= 20; i++)
-        {
-            viewpoints.Add(i);
-        }
-
+        for (int i = 1; i <= 20; i++) viewpoints.Add(i);
         for (int i = viewpoints.Count - 1; i > 0; i--)
         {
             int swapIndex = Random.Range(0, i + 1);
-            int temp = viewpoints[i];
-            viewpoints[i] = viewpoints[swapIndex];
-            viewpoints[swapIndex] = temp;
+            int temp = viewpoints[i]; viewpoints[i] = viewpoints[swapIndex]; viewpoints[swapIndex] = temp;
         }
-
         for (int i = 0; i < 4; i++)
         {
             Transform button = FindChild(chooseCoreArgument == null ? null : chooseCoreArgument.transform, "Choose" + (i + 1));
             Text optionText = button == null ? null : button.GetComponentInChildren<Text>(true);
-            if (optionText != null)
-            {
-                optionText.text = "观点" + viewpoints[i];
-            }
+            if (optionText != null) optionText.text = "观点" + viewpoints[i];
         }
     }
 
@@ -197,32 +226,17 @@ private void AdvancePaperFusionCooldowns()
 
     private void RefreshIncorporateViewpointButton()
     {
-        if (incorporateViewpointButton == null)
-        {
-            return;
-        }
-
+        if (incorporateViewpointButton == null) return;
         bool canUse = CanIncorporateViewpoint();
         incorporateViewpointButton.interactable = canUse;
-
         if (incorporationCooldownText != null)
         {
-            bool hasCurrentPaper = currentResearchPaper != null && currentResearchPaper.paperInfo != null;
-            float inspiration = roundTimer != null && roundTimer.State != null
-                ? roundTimer.State.Inspiration
-                : 0f;
-            int fusionCooldown = hasCurrentPaper ? currentResearchPaper.paperInfo.fusionCooldownRounds : 0;
-            if (inspiration < 1f)
-            {
-                incorporationCooldownText.text = "灵感不足";
-            }
-            else
-            {
-                incorporationCooldownText.text = "融合冷却回合：" + fusionCooldown;
-            }
+            float inspiration = roundTimer != null && roundTimer.State != null ? roundTimer.State.Inspiration : 0f;
+            int fusionCooldown = currentResearchPaper != null && currentResearchPaper.paperInfo != null
+                ? currentResearchPaper.paperInfo.fusionCooldownRounds : 0;
+            incorporationCooldownText.text = inspiration < 1f ? "灵感不足" : "融合冷却回合：" + fusionCooldown;
             incorporationCooldownText.gameObject.SetActive(!canUse);
         }
-
         ColorBlock colors = incorporateViewpointButton.colors;
         colors.disabledColor = Color.gray;
         incorporateViewpointButton.colors = colors;
@@ -239,12 +253,7 @@ private void AdvancePaperFusionCooldowns()
 
     private void IncorporateViewpoint()
     {
-        if (!CanIncorporateViewpoint())
-        {
-            RefreshIncorporateViewpointButton();
-            return;
-        }
-
+        if (!CanIncorporateViewpoint()) { RefreshIncorporateViewpointButton(); return; }
         PaperInfo info = currentResearchPaper.paperInfo;
         info.logicDegree = Mathf.Min(100f, info.logicDegree + 2f);
         info.dataRigor = Mathf.Min(100f, info.dataRigor + 2f);
@@ -257,15 +266,12 @@ private void AdvancePaperFusionCooldowns()
         RefreshArgumentLists();
         RefreshIncorporateViewpointButton();
         RefreshFinalizeFrameworkButton();
+        SavePapers();
     }
 
     private void RefreshFinalizeFrameworkButton()
     {
-        if (finalizeFrameworkButton == null)
-        {
-            return;
-        }
-
+        if (finalizeFrameworkButton == null) return;
         bool canFinalize = currentResearchPaper != null && currentResearchPaper.paperInfo != null &&
                            currentResearchPaper.paperInfo.submissionStatus != SubmissionStatus.Submitted &&
                            currentResearchPaper.paperInfo.incorporatedViewpointCount >= 1 &&
@@ -278,22 +284,9 @@ private void AdvancePaperFusionCooldowns()
 
     private void UseLiteratureSearch()
     {
-        if (roundTimer == null || currentResearchPaper == null || currentResearchPaper.paperInfo == null)
-        {
-            return;
-        }
-
-        if (currentResearchPaper.paperInfo.submissionStatus == SubmissionStatus.Submitted)
-        {
-            RefreshLiteratureSearchButton();
-            return;
-        }
-
-        if (!roundTimer.TryUseLiteratureSearch())
-        {
-            return;
-        }
-
+        if (roundTimer == null || currentResearchPaper == null || currentResearchPaper.paperInfo == null) return;
+        if (currentResearchPaper.paperInfo.submissionStatus == SubmissionStatus.Submitted) { RefreshLiteratureSearchButton(); return; }
+        if (!roundTimer.TryUseLiteratureSearch()) return;
         PaperInfo info = currentResearchPaper.paperInfo;
         info.logicDegree = Mathf.Min(100f, info.logicDegree + 2f);
         info.dataRigor = Mathf.Min(100f, info.dataRigor + 2f);
@@ -301,15 +294,12 @@ private void AdvancePaperFusionCooldowns()
         roundTimer.State.Inspiration += 0.4f;
         UpdateArgumentState();
         RefreshArgumentLists();
+        SavePapers();
     }
 
     private void RefreshLiteratureSearchButton()
     {
-        if (literatureSearchButton == null)
-        {
-            return;
-        }
-
+        if (literatureSearchButton == null) return;
         bool canUse = currentResearchPaper != null && currentResearchPaper.paperInfo != null &&
                       currentResearchPaper.paperInfo.submissionStatus != SubmissionStatus.Submitted;
         literatureSearchButton.interactable = canUse;
@@ -318,7 +308,7 @@ private void AdvancePaperFusionCooldowns()
         literatureSearchButton.colors = colors;
     }
 
-private void ShowSubmitApplication()
+    private void ShowSubmitApplication()
     {
         RefreshArgumentLists();
         ShowOnly(submitApplication, false, 2);
@@ -327,129 +317,89 @@ private void ShowSubmitApplication()
 
     private void BindSubmissionOptions()
     {
-        if (submissionChooseRoot == null)
-        {
-            return;
-        }
-
+        if (submissionChooseRoot == null) return;
         for (int i = 0; i < submissionChooseRoot.childCount; i++)
         {
             int optionIndex = i;
-            Button button = submissionChooseRoot.GetChild(i).GetComponent<Button>();
-            if (button != null)
-            {
-                if (!submissionNormalColors.ContainsKey(button))
-                {
-                    submissionNormalColors.Add(button, button.colors.normalColor);
-                }
-                button.onClick.AddListener(() => SelectSubmissionOption(optionIndex));
-            }
+            Transform btnTransform = submissionChooseRoot.GetChild(i);
+            Button button = btnTransform.GetComponent<Button>();
+            if (button == null) continue;
+            submissionNormalColors[button] = button.colors.normalColor;
+            button.onClick.AddListener(() => SelectSubmissionOption(optionIndex));
         }
     }
 
-    private void SelectSubmissionOption(int optionIndex)
+    private void SelectSubmissionOption(int index)
     {
-        RefreshSubmissionControls();
-        if (optionIndex < 0 || optionIndex >= submissionOptions.Count || !IsSubmissionOptionAvailable(submissionOptions[optionIndex]))
-        {
-            return;
-        }
-
-        selectedSubmissionOption = submissionOptions[optionIndex];
+        if (index < 0 || index >= submissionOptions.Count) return;
+        selectedSubmissionOption = submissionOptions[index];
         RefreshSubmissionControls();
     }
 
     private void SubmitCurrentPaper()
     {
-        if (currentResearchPaper == null || currentResearchPaper.paperInfo == null || selectedSubmissionOption == null ||
-            !IsSubmissionOptionAvailable(selectedSubmissionOption))
-        {
-            return;
-        }
-
+        if (currentResearchPaper == null || currentResearchPaper.paperInfo == null) return;
+        if (selectedSubmissionOption == null || !IsSubmissionOptionAvailable(selectedSubmissionOption)) return;
         PaperInfo info = currentResearchPaper.paperInfo;
         info.submissionStatus = SubmissionStatus.Submitted;
         info.submissionLevel = selectedSubmissionOption.journalLevel;
-        info.submissionRound = roundTimer.State.CurrRound;
+        info.submissionRound = roundTimer != null && roundTimer.State != null ? roundTimer.State.CurrRound : 0;
         info.expectedReviewRound = info.submissionRound + selectedSubmissionOption.reviewDurationRounds;
         info.remainingRounds = selectedSubmissionOption.reviewDurationRounds;
         UpdateArgumentState();
         RefreshArgumentLists();
         RefreshSubmissionControls();
+        SavePapers();
     }
 
-private bool IsSubmissionOptionAvailable(SubmissionOptionScriptableObject option)
+    private bool IsSubmissionOptionAvailable(SubmissionOptionScriptableObject option)
     {
-        if (option == null || currentResearchPaper == null || currentResearchPaper.paperInfo == null || roundTimer == null || roundTimer.State == null)
-        {
-            return false;
-        }
-
+        if (option == null || currentResearchPaper == null || currentResearchPaper.paperInfo == null
+            || roundTimer == null || roundTimer.State == null) return false;
         PaperInfo info = currentResearchPaper.paperInfo;
         int round = roundTimer.State.CurrRound;
         bool canSubmit = info.submissionStatus == SubmissionStatus.ConstructionCompleted ||
                          info.submissionStatus == SubmissionStatus.Rejected;
-        return canSubmit &&
-               round >= option.openRound && round < option.deadlineRound &&
+        return canSubmit && round >= option.openRound && round < option.deadlineRound &&
                info.logicDegree >= option.minimumLogic &&
                info.dataRigor >= option.minimumRigor &&
                info.viewpointInnovation >= option.minimumInnovation;
     }
 
-private void RefreshSubmissionControls()
+    private void RefreshSubmissionControls()
     {
-        // 若 submissionChooseRoot 为空，尝试重新获取
         if (submissionChooseRoot == null && submitApplication != null)
             submissionChooseRoot = FindChild(submitApplication.transform, "choose");
-
         if (submissionChooseRoot != null)
         {
             for (int i = 0; i < submissionChooseRoot.childCount; i++)
             {
                 Transform btnTransform = submissionChooseRoot.GetChild(i);
                 Button button = btnTransform.GetComponent<Button>();
-                if (button == null)
-                    continue;
-
+                if (button == null) continue;
                 SubmissionOptionScriptableObject option = i < submissionOptions.Count ? submissionOptions[i] : null;
                 bool available = IsSubmissionOptionAvailable(option);
                 button.interactable = available;
-
-
                 ColorBlock colors = button.colors;
-                Color baseColor = submissionNormalColors.TryGetValue(button, out Color originalColor)
-                    ? originalColor
-                    : Color.white;
+                Color baseColor = submissionNormalColors.TryGetValue(button, out Color originalColor) ? originalColor : Color.white;
                 colors.normalColor = option != null && option == selectedSubmissionOption
-                    ? Color.Lerp(baseColor, Color.yellow, 0.5f)
-                    : baseColor;
+                    ? Color.Lerp(baseColor, Color.yellow, 0.5f) : baseColor;
                 colors.disabledColor = Color.gray;
                 button.colors = colors;
             }
         }
-
         if (submitButton != null)
-        {
             submitButton.interactable = selectedSubmissionOption != null && IsSubmissionOptionAvailable(selectedSubmissionOption);
-        }
     }
 
     private void FinalizeFramework()
     {
-        if (currentResearchPaper == null || currentResearchPaper.paperInfo == null)
-        {
-            return;
-        }
-
-        if (currentResearchPaper.paperInfo.submissionStatus == SubmissionStatus.Submitted)
-        {
-            RefreshFinalizeFrameworkButton();
-            return;
-        }
-
+        if (currentResearchPaper == null || currentResearchPaper.paperInfo == null) return;
+        if (currentResearchPaper.paperInfo.submissionStatus == SubmissionStatus.Submitted) { RefreshFinalizeFrameworkButton(); return; }
         currentResearchPaper.paperInfo.submissionStatus = SubmissionStatus.ConstructionCompleted;
         UpdateArgumentState();
         ShowSubmitApplication();
+        SavePapers();
     }
 
     private void ShowContinueArgument()
@@ -462,12 +412,7 @@ private void RefreshSubmissionControls()
     {
         Transform buttonTransform = FindChild(chooseCoreArgument == null ? null : chooseCoreArgument.transform, buttonName);
         Button button = buttonTransform == null ? null : buttonTransform.GetComponent<Button>();
-        if (button == null)
-        {
-            Debug.LogError("PaperWorkspaceNavigator could not find button " + buttonName + ".", this);
-            return;
-        }
-
+        if (button == null) { Debug.LogError("PaperWorkspaceNavigator could not find button " + buttonName + ".", this); return; }
         button.onClick.AddListener(() => CreatePaper(buttonTransform));
     }
 
@@ -476,11 +421,7 @@ private void RefreshSubmissionControls()
         Text paperNameText = buttonTransform.GetComponentInChildren<Text>(true);
         string baseName = paperNameText == null ? string.Empty : paperNameText.text;
         PaperInfoScriptableObject paper = ScriptableObject.CreateInstance<PaperInfoScriptableObject>();
-        paper.paperInfo = new PaperInfo
-        {
-            paperName = GetUniquePaperName(baseName)
-        };
-
+        paper.paperInfo = new PaperInfo { paperName = GetUniquePaperName(baseName) };
         createdPapers.Add(paper);
         currentResearchPaper = paper;
         selectedSubmissionOption = null;
@@ -488,6 +429,7 @@ private void RefreshSubmissionControls()
         RefreshArgumentLists();
         RefreshFinalizeFrameworkButton();
         ShowWriteThesis();
+        SavePapers();
     }
 
     private void RefreshArgumentLists()
@@ -498,30 +440,12 @@ private void RefreshSubmissionControls()
 
     private void RefreshArgumentList(Transform list, string panelName)
     {
-        if (list == null)
-        {
-            Debug.LogError("PaperWorkspaceNavigator could not find " + panelName + "/BGArgumentList/ArgumentList/Viewport/Content.", this);
-            return;
-        }
-
-        for (int i = list.childCount - 1; i >= 0; i--)
-        {
-            Destroy(list.GetChild(i).gameObject);
-        }
-
-        if (argumentPrefab == null)
-        {
-            Debug.LogError("PaperWorkspaceNavigator could not load Prefab/Argument.prefab.", this);
-            return;
-        }
-
+        if (list == null) { Debug.LogError("PaperWorkspaceNavigator could not find " + panelName + " content.", this); return; }
+        for (int i = list.childCount - 1; i >= 0; i--) Destroy(list.GetChild(i).gameObject);
+        if (argumentPrefab == null) { Debug.LogError("PaperWorkspaceNavigator: missing Argument prefab.", this); return; }
         foreach (PaperInfoScriptableObject paper in createdPapers)
         {
-            if (paper == null || paper.paperInfo == null)
-            {
-                continue;
-            }
-
+            if (paper == null || paper.paperInfo == null) continue;
             GameObject argument = Instantiate(argumentPrefab, list);
             argument.name = "Argument - " + paper.paperInfo.paperName;
             UpdateArgumentEntry(argument.transform, paper);
@@ -529,15 +453,10 @@ private void RefreshSubmissionControls()
         }
     }
 
-private void BindArgumentSelection(GameObject argument, PaperInfoScriptableObject paper, bool openWriteThesis)
+    private void BindArgumentSelection(GameObject argument, PaperInfoScriptableObject paper, bool openWriteThesis)
     {
         Button button = argument.GetComponent<Button>();
-        if (button == null)
-        {
-            Debug.LogError("PaperWorkspaceNavigator could not find the Button on Argument.prefab.", argument);
-            return;
-        }
-
+        if (button == null) { Debug.LogError("PaperWorkspaceNavigator: Argument.prefab has no Button.", argument); return; }
         SubmissionStatus status = paper.paperInfo.submissionStatus;
         button.interactable = status != SubmissionStatus.Submitted && status != SubmissionStatus.Accepted;
         ColorBlock colors = button.colors;
@@ -546,22 +465,15 @@ private void BindArgumentSelection(GameObject argument, PaperInfoScriptableObjec
         button.onClick.AddListener(() => SelectResearchPaper(paper, openWriteThesis));
     }
 
-private void SelectResearchPaper(PaperInfoScriptableObject paper, bool openWriteThesis = false)
+    private void SelectResearchPaper(PaperInfoScriptableObject paper, bool openWriteThesis = false)
     {
-        if (paper == null || paper.paperInfo == null)
-        {
-            return;
-        }
-
+        if (paper == null || paper.paperInfo == null) return;
         currentResearchPaper = paper;
         selectedSubmissionOption = null;
         UpdateArgumentState();
         RefreshArgumentLists();
         RefreshSubmissionControls();
-        if (openWriteThesis)
-        {
-            ShowWriteThesis();
-        }
+        if (openWriteThesis) ShowWriteThesis();
     }
 
     private void UpdateArgumentEntry(Transform entry, PaperInfoScriptableObject paper)
@@ -569,11 +481,7 @@ private void SelectResearchPaper(PaperInfoScriptableObject paper, bool openWrite
         PaperInfo info = paper.paperInfo;
         UpdateSubmissionSuccessRate(info);
         string displayName = info.paperName;
-        if (paper == currentResearchPaper)
-        {
-            displayName += " 已选择";
-        }
-
+        if (paper == currentResearchPaper) displayName += " 已选择";
         SetText(entry, "NameText", displayName);
         SetText(entry, "stateText", GetSubmissionStatusText(info.submissionStatus));
         SetEntryMetric(entry, "LogicalCoherence", info.logicDegree);
@@ -582,9 +490,8 @@ private void SelectResearchPaper(PaperInfoScriptableObject paper, bool openWrite
         SetEntryMetric(entry, "AcceptanceRate", info.submissionSuccessRate);
     }
 
-private void UpdateSubmissionSuccessRate(PaperInfo info)
+    private void UpdateSubmissionSuccessRate(PaperInfo info)
     {
-        // 强制五个属性上限为100
         info.logicDegree = Mathf.Clamp(info.logicDegree, 0f, 100f);
         info.dataRigor = Mathf.Clamp(info.dataRigor, 0f, 100f);
         info.viewpointInnovation = Mathf.Clamp(info.viewpointInnovation, 0f, 100f);
@@ -597,16 +504,11 @@ private void UpdateSubmissionSuccessRate(PaperInfo info)
     {
         switch (status)
         {
-            case SubmissionStatus.ConstructionCompleted:
-                return "构筑完成";
-            case SubmissionStatus.Submitted:
-                return "已投稿";
-            case SubmissionStatus.Accepted:
-                return "已接受";
-            case SubmissionStatus.Rejected:
-                return "已拒稿";
-            default:
-                return "未投稿";
+            case SubmissionStatus.ConstructionCompleted: return "构筑完成";
+            case SubmissionStatus.Submitted:             return "已投稿";
+            case SubmissionStatus.Accepted:              return "已接受";
+            case SubmissionStatus.Rejected:              return "已拒稿";
+            default:                                     return "未投稿";
         }
     }
 
@@ -615,27 +517,16 @@ private void UpdateSubmissionSuccessRate(PaperInfo info)
         Transform metric = FindChild(entry, metricName);
         Transform fillTransform = FindChild(metric, "Image (1)");
         Image fillImage = fillTransform == null ? null : fillTransform.GetComponent<Image>();
-        if (fillImage != null)
-        {
-            fillImage.fillAmount = Mathf.Clamp01(value / 100f);
-        }
-
+        if (fillImage != null) fillImage.fillAmount = Mathf.Clamp01(value / 100f);
         Transform valueTextTransform = FindChild(fillTransform, "Text (Legacy)");
         Text valueText = valueTextTransform == null ? null : valueTextTransform.GetComponent<Text>();
-        if (valueText != null)
-        {
-            valueText.text = value.ToString("0.#");
-        }
+        if (valueText != null) valueText.text = value.ToString("0.#");
     }
 
     private GameObject LoadArgumentPrefab()
     {
         GameObject loaded = Resources.Load<GameObject>("Prefab/Argument");
-        if (loaded != null)
-        {
-            return loaded;
-        }
-
+        if (loaded != null) return loaded;
 #if UNITY_EDITOR
         return AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefab/Argument.prefab");
 #else
@@ -643,159 +534,60 @@ private void UpdateSubmissionSuccessRate(PaperInfo info)
 #endif
     }
 
-    private Transform CreateArgumentList(Transform parent)
+    private string GetUniquePaperName(string baseName)
     {
-        GameObject listObject = new GameObject("ArgumentList", typeof(RectTransform), typeof(VerticalLayoutGroup));
-        RectTransform rect = listObject.GetComponent<RectTransform>();
-        rect.SetParent(parent, false);
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-
-        VerticalLayoutGroup layout = listObject.GetComponent<VerticalLayoutGroup>();
-        layout.spacing = 12f;
-        layout.childAlignment = TextAnchor.UpperCenter;
-        layout.childForceExpandWidth = true;
-        layout.childForceExpandHeight = false;
-        layout.childControlWidth = true;
-        layout.childControlHeight = true;
-        return rect;
+        int count = 1; string candidate = baseName;
+        while (IsPaperNameTaken(candidate)) { candidate = baseName + " (" + count + ")"; count++; }
+        return candidate;
     }
 
-    private Transform ResolveArgumentList(Transform submitRoot)
+    private bool IsPaperNameTaken(string name)
     {
-        if (submitRoot == null)
-        {
-            return null;
-        }
+        foreach (PaperInfoScriptableObject paper in createdPapers)
+            if (paper != null && paper.paperInfo != null && paper.paperInfo.paperName == name) return true;
+        return false;
+    }
 
-        Transform bgArgumentList = FindChild(submitRoot, "BGArgumentList");
-        Transform argumentListRoot = FindChild(bgArgumentList, "ArgumentList");
-        Transform viewportContent = FindChild(FindChild(argumentListRoot, "Viewport"), "Content");
-        if (viewportContent != null)
-        {
-            return viewportContent;
-        }
-
-        Transform content = FindChild(argumentListRoot, "Content");
-        if (content != null)
-        {
-            return content;
-        }
-
-        Transform explicitList = FindChild(submitRoot, "ArgumentList");
-        if (explicitList != null)
-        {
-            return explicitList;
-        }
-
-        Transform scrollView = FindChild(submitRoot, "Scroll View");
-        Transform viewport = FindChild(scrollView, "Viewport");
-        Transform legacyContent = FindChild(viewport, "Content");
-        if (legacyContent != null)
-        {
-            return legacyContent;
-        }
-
-        return CreateArgumentList(submitRoot);
+    private Transform ResolveArgumentList(Transform panelTransform)
+    {
+        if (panelTransform == null) return null;
+        Transform bg = FindChild(panelTransform, "BGArgumentList");
+        Transform scroll = FindChild(bg, "ArgumentList");
+        Transform viewport = FindChild(scroll, "Viewport");
+        return FindChild(viewport, "Content");
     }
 
     private void UpdateArgumentState()
     {
-        if (currentResearchPaper == null || currentResearchPaper.paperInfo == null)
-        {
-            return;
-        }
-
+        if (argumentState == null || currentResearchPaper == null || currentResearchPaper.paperInfo == null) return;
         PaperInfo info = currentResearchPaper.paperInfo;
         UpdateSubmissionSuccessRate(info);
-        SetText("Name", info.paperName);
-        SetFillAmount("LogicalCoherence", info.logicDegree);
-        SetFillAmount("DataRigor", info.dataRigor);
-        SetFillAmount("Innovativeness", info.viewpointInnovation);
-        SetFillAmount("Heterogeneity", info.complexity);
-        SetFillAmount("AcceptanceRate", info.submissionSuccessRate);
-        SetText("state", GetSubmissionStatusText(info.submissionStatus));
+        SetText(argumentState.transform, "NameText", info.paperName);
+        SetText(argumentState.transform, "stateText", GetSubmissionStatusText(info.submissionStatus));
+        SetEntryMetric(argumentState.transform, "LogicalCoherence", info.logicDegree);
+        SetEntryMetric(argumentState.transform, "DataRigor", info.dataRigor);
+        SetEntryMetric(argumentState.transform, "Innovativeness", info.viewpointInnovation);
+        SetEntryMetric(argumentState.transform, "AcceptanceRate", info.submissionSuccessRate);
     }
 
-    private void SetFillAmount(string objectName, float value)
+    private void SetText(Transform root, string childName, string value)
     {
-        Transform target = FindChild(argumentState == null ? null : argumentState.transform, objectName);
-        Transform fillTransform = FindChild(target, "Image (1)");
-        Image fillImage = fillTransform == null ? null : fillTransform.GetComponent<Image>();
-        if (fillImage != null)
-        {
-            fillImage.fillAmount = Mathf.Clamp01(value / 100f);
-        }
-        else
-        {
-            Debug.LogError("PaperWorkspaceNavigator could not find fill image for " + objectName + ".", this);
-        }
+        Transform child = FindChild(root, childName);
+        Text text = child == null ? null : child.GetComponent<Text>();
+        if (text != null) text.text = value;
     }
 
-    private void SetText(string objectName, string value)
+    private void ShowOnly(GameObject target, bool showArgumentState, int allLefIndex)
     {
-        SetText(argumentState == null ? null : argumentState.transform, objectName, value);
-    }
-
-    private void SetText(Transform root, string objectName, string value)
-    {
-        Transform target = FindChild(root, objectName);
-        Text text = target == null ? null : target.GetComponentInChildren<Text>(true);
-        if (text != null)
-        {
-            text.text = value;
-        }
-        else
-        {
-            Debug.LogError("PaperWorkspaceNavigator could not find text object " + objectName + ".", this);
-        }
-    }
-
-    private string GetUniquePaperName(string baseName)
-    {
-        if (string.IsNullOrWhiteSpace(baseName))
-        {
-            baseName = "Paper";
-        }
-
-        string candidate = baseName;
-        int suffix = 2;
-        while (PaperNameExists(candidate))
-        {
-            candidate = baseName + " (" + suffix + ")";
-            suffix++;
-        }
-
-        return candidate;
-    }
-
-    private bool PaperNameExists(string paperName)
-    {
-        foreach (PaperInfoScriptableObject paper in createdPapers)
-        {
-            if (paper != null && paper.paperInfo != null && paper.paperInfo.paperName == paperName)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-private void ShowOnly(GameObject target, bool showArgumentState,int index)
-    {
-        SetActive(chooseArgument, target == chooseArgument);
-        SetActive(chooseCoreArgument, target == chooseCoreArgument);
-        SetActive(writeThesisMain, target == writeThesisMain);
-        SetActive(submitApplication, target == submitApplication);
-        SetActive(continueArgument, target == continueArgument);
-        SetActive(peerReview, target == peerReview);
+        SetActive(chooseCoreArgument, false);
+        SetActive(chooseArgument, false);
+        SetActive(writeThesisMain, false);
+        SetActive(submitApplication, false);
+        SetActive(continueArgument, false);
+        SetActive(peerReview, false);
         SetActive(argumentState, showArgumentState);
-
-        if (index == -1) return;
-        allLefButton.LefButtonChoose(index);
+        SetActive(target, true);
+        if (allLefButton != null) allLefButton.LefButtonChoose(allLefIndex);
     }
 
     private void ShowPeerReview()
@@ -804,76 +596,57 @@ private void ShowOnly(GameObject target, bool showArgumentState,int index)
         RefreshPeerReviewList();
     }
 
-
-
-
-private void RefreshPeerReviewList()
+    private void RefreshPeerReviewList()
     {
         if (peerReviewContent == null || reviewArgumentPrefab == null) return;
-
         for (int i = peerReviewContent.childCount - 1; i >= 0; i--)
             Destroy(peerReviewContent.GetChild(i).gameObject);
-
         foreach (PaperInfoScriptableObject paper in createdPapers)
         {
             if (paper == null || paper.paperInfo == null) continue;
-
             SubmissionStatus status = paper.paperInfo.submissionStatus;
-
-            // 未投稿、仅构筑完成、已拒稿 均不显示
             if (status == SubmissionStatus.NotSubmitted ||
                 status == SubmissionStatus.ConstructionCompleted ||
-                status == SubmissionStatus.Rejected)
-                continue;
-
+                status == SubmissionStatus.Rejected) continue;
             GameObject entry = Instantiate(reviewArgumentPrefab, peerReviewContent);
             UpdateReviewArgumentEntry(entry.transform, paper.paperInfo);
-
             Button btn = entry.GetComponent<Button>();
             if (btn == null) continue;
-
             ColorBlock colors = btn.colors;
             colors.disabledColor = Color.gray;
             btn.colors = colors;
-
             if (status == SubmissionStatus.Accepted)
             {
-                // 已接受：永久禁用
                 btn.interactable = false;
             }
             else if (status == SubmissionStatus.Submitted && paper.paperInfo.remainingRounds <= 0)
             {
-                // 审稿期结束：可点击，点击触发审稿判定
                 btn.interactable = true;
                 PaperInfoScriptableObject captured = paper;
                 btn.onClick.AddListener(() => ResolveReview(captured));
             }
             else
             {
-                // 审稿中：禁用
                 btn.interactable = false;
             }
         }
     }
 
-private void ResolveReview(PaperInfoScriptableObject paper)
+    private void ResolveReview(PaperInfoScriptableObject paper)
     {
         if (paper == null || paper.paperInfo == null) return;
         if (paper.paperInfo.submissionStatus != SubmissionStatus.Submitted) return;
-
         UpdateSubmissionSuccessRate(paper.paperInfo);
         float roll = Random.Range(0f, 100f);
         paper.paperInfo.submissionStatus = roll < paper.paperInfo.submissionSuccessRate
-            ? SubmissionStatus.Accepted
-            : SubmissionStatus.Rejected;
-
+            ? SubmissionStatus.Accepted : SubmissionStatus.Rejected;
         RefreshArgumentLists();
         RefreshPeerReviewList();
         UpdateArgumentState();
+        SavePapers();
     }
 
-
-private void UpdateReviewArgumentEntry(Transform entry, PaperInfo info)
+    private void UpdateReviewArgumentEntry(Transform entry, PaperInfo info)
     {
         SetText(entry, "NameText", info.paperName);
         SetText(entry, "stateText", GetSubmissionStatusText(info.submissionStatus));
@@ -886,18 +659,13 @@ private void UpdateReviewArgumentEntry(Transform entry, PaperInfo info)
     private GameObject LoadReviewArgumentPrefab()
     {
         GameObject loaded = Resources.Load<GameObject>("Prefab/ReviewArgument");
-        if (loaded != null)
-        {
-            return loaded;
-        }
+        if (loaded != null) return loaded;
 #if UNITY_EDITOR
         return AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefab/ReviewArgument.prefab");
 #else
         return null;
 #endif
     }
-
-
 
     private void AddListener(string buttonName, UnityEngine.Events.UnityAction action)
     {
@@ -908,56 +676,32 @@ private void UpdateReviewArgumentEntry(Transform entry, PaperInfo info)
     {
         Transform buttonTransform = FindChild(root, buttonName);
         Button button = buttonTransform == null ? null : buttonTransform.GetComponent<Button>();
-        if (button == null)
-        {
-            Debug.LogError("PaperWorkspaceNavigator could not find button " + buttonName + ".", this);
-            return;
-        }
-
+        if (button == null) { Debug.LogError("PaperWorkspaceNavigator could not find button " + buttonName + ".", this); return; }
         button.onClick.AddListener(action);
     }
 
     private Transform FindChild(Transform root, string childName)
     {
-        if (root == null || string.IsNullOrEmpty(childName))
-        {
-            return null;
-        }
-
+        if (root == null || string.IsNullOrEmpty(childName)) return null;
         foreach (Transform child in root)
         {
-            if (child.name == childName)
-            {
-                return child;
-            }
-
+            if (child.name == childName) return child;
             Transform nested = FindChild(child, childName);
-            if (nested != null)
-            {
-                return nested;
-            }
+            if (nested != null) return nested;
         }
-
         return null;
     }
 
     private GameObject FindPanel(Transform canvas, string panelName)
     {
         Transform panel = canvas.Find(panelName);
-        if (panel == null)
-        {
-            Debug.LogError("PaperWorkspaceNavigator could not find panel " + panelName + ".", this);
-            return null;
-        }
-
+        if (panel == null) { Debug.LogError("PaperWorkspaceNavigator could not find panel " + panelName + ".", this); return null; }
         return panel.gameObject;
     }
 
     private void SetActive(GameObject panel, bool isActive)
     {
-        if (panel != null)
-        {
-            panel.SetActive(isActive);
-        }
+        if (panel != null) panel.SetActive(isActive);
     }
 }
+
