@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using DG.Tweening;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -516,6 +517,8 @@ public class PaperWorkspaceNavigator : MonoBehaviour
     {
         Transform metric = FindChild(entry, metricName);
         Transform fillTransform = FindChild(metric, "Image (1)");
+        RectTransform rectTransform = metric.GetComponent<RectTransform>();
+        rectTransform.DOShakeScale(0.5f, 0.03f, 10, 90f, false);
         Image fillImage = fillTransform == null ? null : fillTransform.GetComponent<Image>();
         if (fillImage != null) fillImage.fillAmount = Mathf.Clamp01(value / 100f);
         Transform valueTextTransform = FindChild(fillTransform, "Text (Legacy)");
