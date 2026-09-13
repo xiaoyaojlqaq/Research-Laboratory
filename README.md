@@ -198,4 +198,4 @@ C:\Users\<用户名>\AppData\LocalLow\DefaultCompany\Research Laboratory\save.js
 
 ## 资源来源
 - 开发中所用到的美术素材资源均来自所给美术素材经TuanjieAI处理而来。
-- 音频资源均来自https://www.aigei.com/?by=history&from=kkframenew免费资源。
+- 音频资源均来自https://www.aigei.com/?by=history&from=kkframenew 免费资源。
