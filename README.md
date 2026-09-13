@@ -197,5 +197,5 @@ C:\Users\<用户名>\AppData\LocalLow\DefaultCompany\Research Laboratory\save.js
 | 7 | **ButtonSoundManager 跨场景重复创建风险**：若在新场景中仍存在名为 `ButtonSoundManager` 的 GameObject，单例 `Awake` 会销毁后来者，但新场景中的按钮 onClick 持久监听将引用已销毁对象（引用变为 `null`），导致音效静默。 | 多场景扩展 | 目前项目为单场景，不受影响；若后续添加新场景，需在新场景中重新绑定或改用全局事件总线方案。 |
 
 ## 资源来源
-开发中所用到的美术素材资源均来自所给美术素材经TuanjieAI处理而来。
-音频资源均来自https://www.aigei.com/?by=history&from=kkframenew免费资源。
+- 开发中所用到的美术素材资源均来自所给美术素材经TuanjieAI处理而来。
+- 音频资源均来自https://www.aigei.com/?by=history&from=kkframenew免费资源。
