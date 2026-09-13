@@ -4,7 +4,7 @@ using UnityEngine;
 using DG.Tweening;
 using UnityEngine.EventSystems;
 
-public class MainButtonAnima : MonoBehaviour,IPointerEnterHandler,IPointerExitHandler,IPointerUpHandler
+public class MainButtonAnima : MonoBehaviour,IPointerEnterHandler,IPointerExitHandler,IPointerDownHandler,IPointerUpHandler
 {
     RectTransform rectTransform;
     public float scaleFactor;
@@ -25,7 +25,12 @@ public class MainButtonAnima : MonoBehaviour,IPointerEnterHandler,IPointerExitHa
         rectTransform.DOScale(1f, 0.2f);
     }
 
-    public void OnPointerUp(PointerEventData eventData)
+        public void OnPointerDown(PointerEventData eventData)
+    {
+        ButtonSoundManager.Instance?.PlayClick();
+    }
+
+public void OnPointerUp(PointerEventData eventData)
     {
         rectTransform.DOScale(1f, 0.2f);
     }

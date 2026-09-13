@@ -16,10 +16,11 @@ public class LefButton : MonoBehaviour,IPointerDownHandler,IPointerEnterHandler,
     {
         rectTransform = GetComponent<RectTransform>();
     }
-    public void OnPointerDown(PointerEventData eventData)
+public void OnPointerDown(PointerEventData eventData)
     {
         isSelected = true;
         rectTransform.DOScale(scaleFactor, 0.2f);
+        ButtonSoundManager.Instance?.PlayClick();
     }
 
     public void OnPointerEnter(PointerEventData eventData)
